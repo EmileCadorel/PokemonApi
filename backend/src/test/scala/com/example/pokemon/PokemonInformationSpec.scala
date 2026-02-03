@@ -61,7 +61,7 @@ class PokemonInformationSpec extends CatsEffectSuite {
 
   def retPokemonInformationFstTest(pokemon: String) = {
     EmberClientBuilder.default[IO].build.use { cli =>
-      val str = s"/pokemon-info/${pokemon}"      
+      val str = s"/api/pokemon-info/${pokemon}"      
       val url = Uri.fromString(str).getOrElse (throw new Exception("Invalid URI"))
 
       val get = Request[IO](Method.GET, url)
