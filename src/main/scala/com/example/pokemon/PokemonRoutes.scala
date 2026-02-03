@@ -1,10 +1,13 @@
 package com.example.pokemon
 
+import org.http4s.syntax.all.uri
 import cats.effect.{Concurrent}
 import cats.syntax.all.*
 import cats.effect.std.Console
 import org.http4s.{HttpRoutes, DecodeFailure, Request}
 import org.http4s.dsl.Http4sDsl
+
+import org.http4s.headers.Location
 
 import com.example.pokemon.routes.*
 import com.example.pokemon.data.{UserLikeRequest}
@@ -47,6 +50,16 @@ object PokemonRoutes {
     }
   }
 
+  def home[F[_] : Concurrent]: HttpRoutes[F] = {
+    val dsl = new Http4sDsl[F]{}
+    import dsl.*;
+    HttpRoutes.of[F] {
+      case GET -> Root / "home" => {
+        Ok (Concurrent[F].pure ("Home"))
+      }
+    }
+  }
+  
 
   def likePokemon[F[_] : Concurrent: Console](M : UserManager[F]): HttpRoutes[F] = {
     val dsl = new Http4sDsl[F]{}
@@ -63,13 +76,13 @@ object PokemonRoutes {
           case df: DecodeFailure =>
             BadRequest(s"Invalid JSON: ${df.getMessage}")
 
-          // domain error from your service
+          // 
           case _: UserError =>
-            BadRequest("")
+            SeeOther (Location (uri"/home"))            
 
           // unexpected errors
           case e =>
-            InternalServerError(s"Unexpected error: ${e.getMessage}")           
+            InternalServerError(s"Unexpected error: ${e}")           
         }
       }
     }

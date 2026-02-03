@@ -143,6 +143,9 @@ class UserManagerImpl[F[_]: Concurrent: Console](repo: UserRepo[F]) extends User
           Concurrent[F].raiseError (UserNotConnected ())
         }
       }
+      case _ => {
+        Concurrent[F].raiseError (UserNotConnected ())
+      }
     }
   }
 

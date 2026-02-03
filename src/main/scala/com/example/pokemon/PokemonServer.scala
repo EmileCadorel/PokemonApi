@@ -47,6 +47,7 @@ object PokemonServer {
       httpApp = ( 
           PokemonRoutes.pokemonInformation[F](pokemonInfoAlg) <+>
             PokemonRoutes.loginUser[F](userAlg) <+>
+            PokemonRoutes.home[F] <+>
             PokemonRoutes.likePokemon[F](userAlg)
       ).orNotFound
 
