@@ -9,7 +9,7 @@ val DoobieVersion          = "1.0.0-RC8"
 val BcryptVersion          = "0.3m"
 val JaxbVersion            = "2.3.1"
 val JansiVersion           = "2.4.0"
-val TyrianVersion          = "0.9.0"
+val TyrianVersion          = "0.14.0"
 
 lazy val backend = (project in file("backend"))
   .settings(
@@ -44,8 +44,8 @@ lazy val frontend = (project in file ("frontend"))
   .settings(    
     scalaVersion := "3.6.4",
     libraryDependencies ++= Seq(
-      "io.indigoengine" %%% "tyrian-io" % "0.14.0",      
-      "org.scalameta"   %%% "munit"     % "1.1.1" % Test      
+      "io.indigoengine" %%% "tyrian-io" % TyrianVersion,      
+      "org.scalameta"   %%% "munit"     % MunitVersion % Test      
     )    
   )
 
