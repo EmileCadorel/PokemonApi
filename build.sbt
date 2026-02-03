@@ -16,7 +16,7 @@ lazy val backend = (project in file("backend"))
     organization := "com.example",
     name := "pokemon",
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "3.3.6",
+    scalaVersion := "3.6.4",
     libraryDependencies ++= Seq(
       "org.http4s"           %% "http4s-ember-server" % Http4sVersion,
       "org.http4s"           %% "http4s-ember-client" % Http4sVersion,
