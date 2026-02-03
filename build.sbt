@@ -5,6 +5,9 @@ val LogbackVersion = "1.5.18"
 val MunitCatsEffectVersion = "2.1.0"
 val JwtVersion = "0.9.1"
 val MysqlVersion = "8.0.11"
+val DoobieVersion = "1.0.0-RC8"
+val BcryptVersion = "0.3m"
+val JaxbVersion = "2.3.1"
 
 lazy val root = (project in file("."))
   .settings(
@@ -21,7 +24,11 @@ lazy val root = (project in file("."))
       "org.typelevel"   %% "munit-cats-effect"   % MunitCatsEffectVersion % Test,
       "ch.qos.logback"  %  "logback-classic"     % LogbackVersion         % Runtime,
       "io.jsonwebtoken" % "jjwt"                 % JwtVersion,
-      "mysql"           % "mysql-connector-java" % MysqlVersion 
+      "javax.xml.bind"  % "jaxb-api"             % JaxbVersion, 
+      "org.tpolecat"    %% "doobie-core"         % DoobieVersion,
+      "org.tpolecat"    %% "doobie-hikari"       % DoobieVersion,
+      "mysql"           % "mysql-connector-java" % MysqlVersion,
+      "org.mindrot"     % "jbcrypt"              % BcryptVersion
     ),
     assembly / assemblyMergeStrategy := {
       case "module-info.class" => MergeStrategy.discard

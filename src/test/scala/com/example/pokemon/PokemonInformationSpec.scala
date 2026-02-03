@@ -9,8 +9,8 @@ import munit.CatsEffectSuite
 
 import org.http4s.ember.client.EmberClientBuilder
 
-
 import com.example.pokemon.data.Pokemon
+import com.example.pokemon.routes.PokemonInformation
 
 class PokemonInformationSpec extends CatsEffectSuite {
 
@@ -58,7 +58,6 @@ class PokemonInformationSpec extends CatsEffectSuite {
       }
     }}    
   }
-
 
   def retPokemonInformationFstTest(pokemon: String) = {
     EmberClientBuilder.default[IO].build.use { cli =>

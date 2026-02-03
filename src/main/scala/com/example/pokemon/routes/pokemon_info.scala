@@ -1,4 +1,4 @@
-package com.example.pokemon
+package com.example.pokemon.routes
 
 import cats.effect.Concurrent
 import cats.syntax.all.*
