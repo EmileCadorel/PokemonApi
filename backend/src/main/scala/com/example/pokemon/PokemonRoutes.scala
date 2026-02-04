@@ -1,6 +1,5 @@
 package com.example.pokemon
 
-import org.http4s.syntax.all.uri
 import cats.effect.{Concurrent, Async}
 import cats.syntax.all.*
 import cats.effect.std.Console
@@ -9,7 +8,6 @@ import org.http4s.{HttpRoutes, DecodeFailure, Request}
 import org.http4s.dsl.Http4sDsl
 
 import org.http4s.server.staticcontent._
-import org.http4s.headers.Location
 import org.http4s.StaticFile
 
 import com.example.pokemon.routes.*
@@ -118,7 +116,7 @@ object PokemonRoutes {
 
           // Login fail or else
           case _: UserError =>
-            SeeOther (Location (uri"/home"))
+            Forbidden("Log failed")
 
           // unexpected errors
           case e =>
@@ -153,7 +151,7 @@ object PokemonRoutes {
 
           // Not connected
           case _: UserError =>
-            SeeOther (Location (uri"/home"))            
+            Forbidden("Must be connected")
 
           // unexpected errors
           case e =>

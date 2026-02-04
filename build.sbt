@@ -48,8 +48,12 @@ lazy val frontend = (project in file ("frontend"))
   .settings(    
     scalaVersion := "3.6.4",
     libraryDependencies ++= Seq(
-      "io.indigoengine" %%% "tyrian-io" % TyrianVersion,      
-      "org.scalameta"   %%% "munit"     % MunitVersion % Test      
+      "io.indigoengine" %%% "tyrian-io"          % TyrianVersion,      
+      "org.scalameta"   %%% "munit"              % MunitVersion % Test,
+      "io.circe"        %%% "circe-core"          % CirceGenericVersion,
+      "io.circe"        %%% "circe-generic"       % CirceGenericVersion,
+      "io.circe"        %%% "circe-parser"        % CirceGenericVersion
+      
     )    
   )
 

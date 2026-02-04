@@ -32,7 +32,7 @@ object UserPass {
   given [F[_]]: EntityEncoder[F, UserPass] = jsonEncoderOf
 }
 
-case class UserConnected (id : Int, jwt: String)
+case class UserConnected (id : Int, name: String, jwt: String)
 object UserConnected {
   given Decoder[UserConnected] = Decoder.derived[UserConnected]
   given Encoder[UserConnected] = Encoder.AsObject.derived[UserConnected]

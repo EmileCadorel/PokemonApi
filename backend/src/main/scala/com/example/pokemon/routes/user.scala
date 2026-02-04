@@ -117,7 +117,7 @@ class UserManagerImpl[F[_]: Concurrent: Console](repo: UserRepo[F]) extends User
            result <- {
              // Check for the hash of the password (maybe it can be put on the client side to avoid sending plain text password through netword ;) )
              if (BCrypt.checkpw (password, user.password)) { 
-               Concurrent[F].pure(UserConnected (user.id, Jwt (Map ("login"-> user.name, "id"-> user.id, "issued"-> s"@UserManager"))))
+               Concurrent[F].pure(UserConnected (user.id, user.name, Jwt (Map ("login"-> user.name, "id"-> user.id, "issued"-> s"@UserManager"))))
              } else {
                Concurrent[F].raiseError (UserPassMismatch (name))
              }
