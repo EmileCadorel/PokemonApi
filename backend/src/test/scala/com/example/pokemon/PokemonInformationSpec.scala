@@ -29,7 +29,7 @@ class PokemonInformationSpec extends CatsEffectSuite {
         assertEquals(pokemon.id, 132)
         assertEquals(pokemon.weight, 40)
         assertEquals (pokemon.types.length, 1)
-        assertEquals(pokemon.types (0).`type`.name, "normal")
+        assertEquals(pokemon.types (0).value.name, "normal")
       }
     }}    
   }
@@ -41,7 +41,7 @@ class PokemonInformationSpec extends CatsEffectSuite {
         assertEquals(pokemon.id, 25)
         assertEquals(pokemon.weight, 60)
         assertEquals (pokemon.types.length, 1)
-        assertEquals(pokemon.types (0).`type`.name, "electric")
+        assertEquals(pokemon.types (0).value.name, "electric")
       }
     }}    
   }
@@ -53,8 +53,8 @@ class PokemonInformationSpec extends CatsEffectSuite {
         assertEquals(pokemon.id, 6)
         assertEquals(pokemon.weight, 905)
         assertEquals (pokemon.types.length, 2)
-        assertEquals(pokemon.types (0).`type`.name, "fire")
-        assertEquals(pokemon.types (1).`type`.name, "flying")
+        assertEquals(pokemon.types (0).value.name, "fire")
+        assertEquals(pokemon.types (1).value.name, "flying")
       }
     }}    
   }
