@@ -1,5 +1,6 @@
 val Http4sVersion          = "0.23.30"
-val CirceVersion           = "0.14.14"
+val CirceGenericVersion    = "0.14.5"
+val CirceYamlVersion       = "0.16.1"
 val MunitVersion           = "1.1.1"
 val LogbackVersion         = "1.5.18"
 val MunitCatsEffectVersion = "2.1.0"
@@ -10,6 +11,7 @@ val BcryptVersion          = "0.3m"
 val JaxbVersion            = "2.3.1"
 val JansiVersion           = "2.4.0"
 val TyrianVersion          = "0.14.0"
+
 
 lazy val backend = (project in file("backend"))
   .settings(
@@ -31,7 +33,9 @@ lazy val backend = (project in file("backend"))
       "org.tpolecat"         %% "doobie-hikari"       % DoobieVersion,
       "mysql"                % "mysql-connector-java" % MysqlVersion,
       "org.mindrot"          % "jbcrypt"              % BcryptVersion,
-      "org.fusesource.jansi" % "jansi"                % JansiVersion 
+      "org.fusesource.jansi" % "jansi"                % JansiVersion,
+      "io.circe"             %% "circe-generic"       % CirceGenericVersion,
+      "io.circe"             %% "circe-yaml"          % CirceYamlVersion
     ),
     assembly / assemblyMergeStrategy := {
       case "module-info.class" => MergeStrategy.discard
