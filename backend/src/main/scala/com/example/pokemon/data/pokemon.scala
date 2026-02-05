@@ -81,12 +81,16 @@ object PokemonList {
   import io.circe.{Json, HCursor, DecodingFailure}
 
   def decodeNames(cursor: HCursor): Either[String, List[String]] = {    
-    cursor.downField("results").as[List[Json]].leftMap (_.message)
-      .flatMap { arr => 
+    cursor.downField("results").as[List[Json]] match {
+      case Right (arr) => { // From PokeAPI          
         arr.traverse { json =>
           json.hcursor.get[String]("name").leftMap(_.message)
-        }         
+        }
       }
+      case _ => { // From here
+        cursor.get[List[String]]("names").leftMap(_.message)
+      }
+    }
   }
 
   given Decoder[PokemonList] = Decoder.instance { cursor =>

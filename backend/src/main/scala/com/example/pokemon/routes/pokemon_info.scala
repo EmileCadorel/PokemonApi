@@ -35,7 +35,7 @@ class PokemonRepoDummy[F[_]: Async] extends PokemonRepo[F] {
 
 class PokemonRepoLive[F[_]: Async](xa: Transactor[F]) extends PokemonRepo[F] {
   def suggest(start: String): F[List[String]] =
-    sql"SELECT name FROM pokemon_names WHERE name LIKE ${start + "%"} LIMIT 5"
+    sql"SELECT name FROM pokemon_names WHERE name LIKE ${start + "%"}  ORDER BY name LIMIT 5"
       .query[String]
       .to[List]
       .transact(xa)

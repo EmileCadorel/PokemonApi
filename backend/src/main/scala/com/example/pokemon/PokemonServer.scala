@@ -94,9 +94,8 @@ object PokemonServer {
     """.update
 
     val q3 = sql"DROP TABLE IF EXISTS pokemon_names".update ;                                                             
-    val q4 = sql"""CREATE TABLE if NOT EXISTS pokemon_names (id INT NOT NULL AUTO_INCREMENT,
-                                                             name VARCHAR(30) NOT NULL,
-                                                             PRIMARY KEY (id))                                                     
+    val q4 = sql"""CREATE TABLE if NOT EXISTS pokemon_names (name VARCHAR(30) NOT NULL,
+                                                             PRIMARY KEY (name))                                                     
     """.update
 
     for {
