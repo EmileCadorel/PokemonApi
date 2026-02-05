@@ -1,198 +1,269 @@
 package com.example
 
 import cats.effect.IO
-import cats.syntax.either.*
 
-import tyrian.Html.*
 import tyrian.*
-import tyrian.http.*
+import tyrian.Html.*
 
-import io.circe.HCursor
 import scala.scalajs.js.annotation.*
-import io.circe.Json
-import io.circe.parser.*
-
 import org.scalajs.dom
-
-/*!
-* ====================================================================================================
-* ====================================================================================================
-* =================================          MODEL/MESSAGE          ==================================
-* ====================================================================================================
-* ====================================================================================================
-*/
-
-final case class Model (  
-  token: Option[String],
-  username: Option[String],
-  loginFailed: Boolean,
-  loginForm: LoginForm
-)
-final case class LoginForm (username: String, password: String)
-
-enum Msg:
-  case UsernameChanged(value: String)
-  case PasswordChanged(value: String)
-  case SubmitLogin
-  case SubmitLogout
-  case LoginSucceeded(name: String, token: String)
-  case LoginFailed(error: String)  
-  case NoOp
-
-/*!
-* ====================================================================================================
-* ====================================================================================================
-* =====================================          LOGIN          ======================================
-* ====================================================================================================
-* ====================================================================================================
-*/
-
-object LoginApi {
-  def jsonDecode(cursor: HCursor): Either[String, Msg.LoginSucceeded] = {
-    for {
-      token <- cursor.get[String]("jwt").leftMap(_.message)
-      name <- cursor.get[String]("name").leftMap(_.message)
-    } yield Msg.LoginSucceeded(name, token)
-  }
-    
-  private val onResponse: Response => Msg = { response =>
-    parse(response.body)
-      .leftMap(_.message)
-      .flatMap(j => jsonDecode(j.hcursor))
-      .fold(
-        err => Msg.LoginFailed(err),
-        res => Msg.LoginSucceeded(res.name, res.token)
-      )       
-  }
-
-  private val onError: HttpError => Msg =
-    e => Msg.LoginFailed(e.toString)
-
-  def fromHttpResponse: tyrian.http.Decoder[Msg] = {
-    tyrian.http.Decoder[Msg](onResponse, onError)
-  }
-
-  def login(username: String, password: String): Cmd[IO, Msg] = {    
-    Http.send(
-      Request.post("http://localhost:8080/api/login", Body.json(
-        Json.obj(
-          "login" -> Json.fromString(username),
-          "password" -> Json.fromString(password)
-        ).noSpaces
-      )), LoginApi.fromHttpResponse)
-    }
-}
-
-
-/*!
-* ====================================================================================================
-* ====================================================================================================
-* ======================================          APP          =======================================
-* ====================================================================================================
-* ====================================================================================================
-*/
 
 @JSExportTopLevel("TyrianApp")
 object Main extends TyrianIOApp[Msg, Model] {
 
+  // No route, single page app
   def router: Location => Msg = Routing.none(Msg.NoOp)
+
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * ======================================          INIT          ======================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
 
   def init(flags: Map[String, String]): (Model, Cmd[IO, Msg]) = {
     // On home page, if the jwt is defined we are already logged, otherwise we must login
     val token = Option (dom.window.sessionStorage.getItem("jwt"))
     val name = Option (dom.window.sessionStorage.getItem("username"))
 
-    (Model (token, name, false, LoginForm ("", "")), Cmd.None)
+    // Home page workflow (if logged -> PokemonSearch else Login)
+    val page = (token, name) match {
+      case (Some (token), Some (name)) => {
+        Page.PokemonSearch (PokemonSearchForm ("", None))
+      }
+      case _ => {
+        Page.Login (LoginForm ("", "", false))
+      }
+    }
+
+    (Model (page, token, name), Cmd.None)
   }
 
-  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = {    
-    case Msg.UsernameChanged(v) =>
-      (model.copy(loginForm = model.loginForm.copy(username = v)), Cmd.None)
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * =====================================          UPDATE          =====================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
 
-    case Msg.PasswordChanged(v) =>
-      (model.copy(loginForm = model.loginForm.copy(password = v)), Cmd.None)
-
-    case Msg.SubmitLogin =>
-      dom.console.log ("Submitted")
-      // call to the backend API
-      val cmd = LoginApi.login(model.loginForm.username, model.loginForm.password)
-      (model, cmd)
-
-    case Msg.LoginSucceeded(name, token) =>
-      dom.console.log(s"Success! ${name}, ${token}")
-
-      // Or localStorage to survive tab close
-      dom.window.sessionStorage.setItem("jwt", token)
-      dom.window.sessionStorage.setItem("username", name)
-
-      (model.copy(token = Some(token), username = Some (name), loginFailed = false), Cmd.None)      
-
-    case Msg.LoginFailed(err) =>
-      dom.console.log(s"Error ! ${err}")      
-      (model.copy(loginFailed = true), Cmd.None)
-
-    case Msg.SubmitLogout =>
-
-      // Or localStorage to survive tab close
-      dom.window.sessionStorage.removeItem("jwt")
-      dom.window.sessionStorage.removeItem("username")
-
-      // Back to login page
-      (model.copy (token = None, username = None, loginFailed = false, loginForm = LoginForm ("", "")), Cmd.None)
-
-    case Msg.NoOp =>
+  /**
+    * Slot emitted when something changed on the page
+    * @returns:
+    *    (0): the new page model to change the view if needed
+    *    (1): the command to run to launch back api commands if needed (Or Cmd.None)
+    */
+  def update(model: Model): Msg => (Model, Cmd[IO, Msg]) = 
+    case Msg.LMsg (log) => updateLogin (log, model)
+    case Msg.SMsg (sub) => updateSub (sub, model)
+    case Msg.PMsg (pok) => updatePok (pok, model)
+    case _ => { // NoOp
       (model, Cmd.None)
-  }
+    }
 
+  /**
+    * A Login message was received
+    */
+  def updateLogin(log: LoginMessage, model: Model): (Model, Cmd[IO, Msg]) = 
+    log match {
+      case LoginMessage.UsernameChanged(v) => // filling username field
+        val form = extractLoginForm (model)
+        (model.copy(page = Page.Login (form.copy (username = v))), Cmd.None)
+
+      case LoginMessage.PasswordChanged(v) => // filling password field
+        val form = extractLoginForm (model)
+        (model.copy(page = Page.Login (form.copy (password = v))), Cmd.None)
+        
+      case LoginMessage.Succeeded(name, token) =>
+        dom.console.log(s"Success! ${name}, ${token}")
+
+        // Set the data into the page, to retreive them and keep the user logged through the session
+        // Or localStorage to survive tab close
+        dom.window.sessionStorage.setItem("jwt", token)
+        dom.window.sessionStorage.setItem("username", name)
+
+        // Redirect to the PokemonSearch page
+        (Model (Page.PokemonSearch (PokemonSearchForm ("", None)), Some (token), Some (name)), Cmd.None)
+
+      case LoginMessage.Failed(err) =>
+        dom.console.log(s"Error ! ${err}")
+        val form = extractLoginForm (model)
+
+        // Redirect to clean login page with failure message
+        (Model (Page.Login (LoginForm (form.username, "", true)), None, None), Cmd.None)        
+
+      case LoginMessage.SubmitForm =>
+        // Just a console log test
+        dom.console.log ("Submitted")
+
+        model.page match {
+          case Page.Login (form) =>
+            // call to the backend API
+            val cmd = LoginApi.login(form.username, form.password)
+
+            // Stay on the page for the moment
+            (model, cmd)
+          case _ => // ???
+            // Form not found? 
+            (Model (Page.Login (LoginForm ("", "", true)), None, None), Cmd.None)           
+        }
+    }
+
+  /**
+    * A subscribe message was received
+    */
+  def updateSub(sub: SubscribeMessage, model: Model): (Model, Cmd[IO, Msg]) =
+    sub match {
+      // TODO!!
+      case _ => (model, Cmd.None)
+    }
+
+  /**
+    * A pokemon message was received
+    */
+  def updatePok(pok: PokemonMessage, model: Model): (Model, Cmd[IO, Msg]) =
+    pok match {
+      case PokemonMessage.SubmitLogout =>
+        // Clean credentials
+        dom.window.sessionStorage.removeItem("jwt")
+        dom.window.sessionStorage.removeItem("username")
+
+        // And go back to login page
+        (Model (Page.Login (LoginForm ("", "", false)), None, None), Cmd.None)
+
+      // TODO!!
+      case _ => (model, Cmd.None)
+    }
+
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * =====================================          VIEWS          ======================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
+
+  /**
+    * Construct the page content depending on the page
+    */
   def view(model: Model): Html[Msg] = {
-    (model.token, model.username) match {
-      case (Some (token), Some (name)) =>
-        homeView (model, name, token)
-      case _ =>        
-        loginFormView (model)
+    dom.console.log (s"Page : ${model.page}, model : ${model}")
+    (model.page, model.username) match {
+      case (Page.Login (form), _) => loginView (form)
+      case (Page.Subscribe (form), _) => subscribeView (form)
+      case (Page.PokemonSearch (form), Some (name)) => pokemonView (form, name)
+      case _ => { // ???
+        errorView ()
+      }
     }
   }
 
-  def loginFormView(model: Model): Html[Msg] = {
+  /**
+    * Construct the page for login 
+    */
+  def loginView(lform: LoginForm): Html[Msg] = {
     div(
       h2("Login"),
       div (
-        if model.loginFailed then
+        if lform.failed then
           List(p (style(CSS.color("red")))("wrong credentials"))
         else
           List ()
       ),
       form (
         id := "form",
-        onSubmit(Msg.SubmitLogin)
+        onSubmit(Msg.LMsg (LoginMessage.SubmitForm))
       )(
         input(
           placeholder:= "Username",
-          value := model.loginForm.username,
-          onInput(Msg.UsernameChanged.apply)
+          value := lform.username,
+          onInput(s => Msg.LMsg (LoginMessage.UsernameChanged (s)))
         ),
         input(
           placeholder := "Password",
           `type` := "password",
-          value := model.loginForm.password,
-          onInput(Msg.PasswordChanged.apply)
+          value := lform.password,
+          onInput(s => Msg.LMsg (LoginMessage.PasswordChanged (s)))                    
         ),
         button(`type` := "submit",
-          onClick(Msg.SubmitLogin)
+          onClick(Msg.LMsg (LoginMessage.SubmitForm))
         )("Login")
       )            
     )
   }
 
-  def homeView (model: Model, name: String, token: String): Html[Msg] = {
+  /**
+    * Construct the page for subscription
+    */
+  def subscribeView(form: SubscribeForm): Html[Msg] = {
+    div ()
+  }
+
+  /**
+    * Construct the page for pokemon view
+    */
+  def pokemonView(form: PokemonSearchForm, username: String): Html [Msg] = {
     div(
-      h2(s"Welcome! $name"),
-      button (onClick(Msg.SubmitLogout))("Logout"),
-      p(s"Your token: $token"),            
+      h2(s"Welcome! $username"),
+      button (onClick(Msg.PMsg (PokemonMessage.SubmitLogout)))("Logout")                  
+    )    
+  }
+
+  /**
+    * Error page (should not happen)
+    */
+  def errorView(): Html[Msg] = {
+    div(
+      h1("ERROR!!")
     )
   }
 
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * ======================================          MISC          ======================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
+
+  /**
+    * Unused we don't subscribe to external events
+    */
   def subscriptions(model: Model): Sub[IO, Msg] =
     Sub.None
+
+  /**
+    * Extract the login form from the model
+    */
+  def extractLoginForm(model: Model): LoginForm =
+    model.page match {
+      case Page.Login (form) => form
+      case _ => {
+        LoginForm ("", "", false)
+      }
+    }
+
+  /**
+    * Extract the subscribe form from the model
+    */
+  def extractSubForm(model: Model): SubscribeForm =
+    model.page match {
+      case Page.Subscribe (form) => form
+      case _ => {
+        SubscribeForm ("", "", false)
+      }
+    }
+
+  /**
+    * Extract the subscribe form from the model
+    */
+  def extractPokForm(model: Model): PokemonSearchForm =
+    model.page match {
+      case Page.PokemonSearch (form) => form
+      case _ => {
+        PokemonSearchForm ("", None)
+      }
+    }
 
 }
