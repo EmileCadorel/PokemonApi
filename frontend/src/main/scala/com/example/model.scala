@@ -28,12 +28,11 @@ enum Page:
   case Subscribe (form: SubscribeForm)
   case PokemonSearch (form: PokemonSearchForm)
 
-final case class LoginForm (username: String, password: String, failed: Boolean)
-final case class SubscribeForm (username: String, password: String, failed: Boolean)
-final case class PokemonSearchForm (name: String, pokemon: Option[Pokemon])
+final case class LoginForm (username: String = "", password: String = "", failed: Boolean = false)
+final case class SubscribeForm (username: String = "", password: String = "", failed: Boolean = false)
+final case class PokemonSearchForm (name: String = "", pokemon: Option[Pokemon] = None, suggestions: List[String] = List (), failed: Boolean = false)
 
-
-final case class Pokemon(id: Int, name: String, image: String, weight: Int, types: List[String])
+final case class Pokemon(id : Int, name: String, weight: Int, sprite: String, types: List[String])
 
 /*!
  * ====================================================================================================
@@ -67,6 +66,9 @@ enum PokemonMessage:
   case NameChanged(value: String)  
   case InfoSucceeded(pokemon: Pokemon)
   case InfoFailed(error: String)
+  case SuggestionSelected(suggestion: String)
+  case SuggestionSucceeded(lst: List[String])
+  case SuggestionFailed(error: String)
   case SubmitForm
   case SubmitLogout
   

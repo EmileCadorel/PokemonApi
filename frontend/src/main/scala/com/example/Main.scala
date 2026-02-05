@@ -30,10 +30,10 @@ object Main extends TyrianIOApp[Msg, Model] {
     // Home page workflow (if logged -> PokemonSearch else Login)
     val page = (token, name) match {
       case (Some (token), Some (name)) => {
-        Page.PokemonSearch (PokemonSearchForm ("", None))
+        Page.PokemonSearch (PokemonSearchForm ())
       }
       case _ => {
-        Page.Login (LoginForm ("", "", false))
+        Page.Login (LoginForm ())
       }
     }
 
@@ -91,7 +91,7 @@ object Main extends TyrianIOApp[Msg, Model] {
         val form = extractLoginForm (model)
 
         // Redirect to clean login page with failure message
-        (Model (Page.Login (LoginForm (form.username, "", true)), None, None), Cmd.None)        
+        (Model (Page.Login (LoginForm (username = form.username, failed = true)), None, None), Cmd.None)        
 
       case LoginMessage.SubmitForm =>
         // Just a console log test
@@ -106,7 +106,7 @@ object Main extends TyrianIOApp[Msg, Model] {
             (model, cmd)
           case _ => // ???
             // Form not found? 
-            (Model (Page.Login (LoginForm ("", "", true)), None, None), Cmd.None)           
+            (Model (Page.Login (LoginForm (failed = true)), None, None), Cmd.None)           
         }
     }
 
@@ -130,10 +130,44 @@ object Main extends TyrianIOApp[Msg, Model] {
         dom.window.sessionStorage.removeItem("username")
 
         // And go back to login page
-        (Model (Page.Login (LoginForm ("", "", false)), None, None), Cmd.None)
+        (Model (Page.Login (LoginForm ()), None, None), Cmd.None)
 
-      // TODO!!
-      case _ => (model, Cmd.None)
+      case PokemonMessage.NameChanged(name) =>
+        val form = extractPokForm (model)
+        (model.copy(page = Page.PokemonSearch (form.copy (name = name, suggestions = List ()))), Cmd.None)
+
+      case PokemonMessage.SuggestionSelected(name) =>
+        val form = extractPokForm (model)
+        (model.copy(page = Page.PokemonSearch (form.copy (name = name, suggestions = List ()))), Cmd.None)
+
+      case PokemonMessage.InfoSucceeded(pokemon) =>        
+        (model.copy (page = Page.PokemonSearch (PokemonSearchForm (pokemon = Some (pokemon)))), Cmd.None)
+
+      case PokemonMessage.InfoFailed(_) =>
+        (model.copy (page = Page.PokemonSearch (PokemonSearchForm (failed = true))), Cmd.None)
+
+      case PokemonMessage.SuggestionSucceeded(lst) =>
+        val form = extractPokForm (model)
+        (model.copy(page = Page.PokemonSearch (form.copy (suggestions = lst))), Cmd.None)        
+
+      case PokemonMessage.SuggestionFailed(_) =>
+        val form = extractPokForm (model)
+        (model.copy(page = Page.PokemonSearch (form.copy (suggestions = List ()))), Cmd.None)        
+
+      case PokemonMessage.SubmitForm =>
+        model.page match {
+          case Page.PokemonSearch (form) =>
+            // Call the backend api
+            val cmd = PokemonApi.search(form.name)
+
+            // Stay on the page
+            (model, cmd)
+
+          case _ => // ???
+
+            // Form not found
+            (model.copy (page = Page.PokemonSearch (PokemonSearchForm (failed = true))), Cmd.None)
+        }
     }
 
   /*!
@@ -203,15 +237,75 @@ object Main extends TyrianIOApp[Msg, Model] {
   /**
     * Construct the page for pokemon view
     */
-  def pokemonView(form: PokemonSearchForm, username: String): Html [Msg] = {
+  def pokemonView(pform: PokemonSearchForm, username: String): Html[Msg] = {
     div(
       h2(s"Welcome! $username"),
-      button (onClick(Msg.PMsg (PokemonMessage.SubmitLogout)))("Logout")                  
+      button (onClick(Msg.PMsg (PokemonMessage.SubmitLogout)))("Logout"),
+      div (
+        if pform.failed then
+          List(p (style(CSS.color("red")))("Not found"))
+        else
+          List ()
+      ),
+      form(
+        id := "form",
+        onSubmit(Msg.PMsg (PokemonMessage.SubmitForm))
+      )(
+        input (
+          placeholder := "Pokemon Name",
+          value := pform.name,
+          onInput (s => Msg.PMsg (PokemonMessage.NameChanged (s)))
+        ),
+        pokemonSuggestionView (pform.suggestions),
+        button (`type` := "submit",
+          onClick (Msg.PMsg (PokemonMessage.SubmitForm))
+        )("Search")
+      ),
+      ul( pform.suggestions.map { name => li(name) } ),
+      // display the pokemon
+      pokemonInfoView (pform.pokemon, pform.failed)      
     )    
   }
 
   /**
-    * Error page (should not happen)
+    * Display the pokemon information
+    */
+  def pokemonInfoView(pokemon: Option[Pokemon], failed: Boolean): Html[Msg] =
+    (pokemon, failed) match {
+      case (Some (pok), false) =>
+        div (
+          hr (),
+          h2 (s"Pokemon : ${pok.name}"),
+          p (s"Id : ${pok.id}"),
+          img (
+            src := pok.sprite,
+            alt := pok.name
+          ),
+          if pok.types.nonEmpty then {
+            div (
+              h3("types"),
+              ul (
+                pok.types.map { name => li(name) }
+              )
+            )
+          } else {
+            div ()
+          }          
+        )
+      case _ => div ()      
+    }
+
+  def pokemonSuggestionView(lst: List[String]): Html[Msg] =
+    if lst.nonEmpty then {
+      ul (      
+        lst.map { name => li(onClick( Msg.PMsg(PokemonMessage.SuggestionSelected(name))))(name) }
+      )
+    } else {
+      div ()
+    }
+
+  /**
+    * error page (should not happen)
     */
   def errorView(): Html[Msg] = {
     div(
