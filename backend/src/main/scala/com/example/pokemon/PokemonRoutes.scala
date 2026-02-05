@@ -89,6 +89,26 @@ object PokemonRoutes {
   }
 
   /**
+    * List pokemon names starting with {name}
+    * Get /api/pokemon-lists/{name}
+    */
+  def suggestPokemons[F[_]: Concurrent: Console](M: PokemonInformation[F]): HttpRoutes[F] = {
+    val dsl = new Http4sDsl[F]{}
+    import dsl.*;
+    HttpRoutes.of[F] {
+      case GET -> Root / "api"/ "pokemon-lists" / name => {
+        M.suggest(name)
+          .flatMap {
+            result => Ok (result)
+          }.handleErrorWith {
+            case _ =>
+              NotFound()
+          }
+      }
+    }
+  }
+
+  /**
     * POST /api/login
     * @Request : {
     *    "login" : String

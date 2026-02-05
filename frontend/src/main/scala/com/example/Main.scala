@@ -133,8 +133,14 @@ object Main extends TyrianIOApp[Msg, Model] {
         (Model (Page.Login (LoginForm ()), None, None), Cmd.None)
 
       case PokemonMessage.NameChanged(name) =>
+        dom.console.log(s"Changes! ${name}")        
+        val cmd = if name != "" then
+          PokemonApi.suggest(name)
+        else
+          Cmd.None
+
         val form = extractPokForm (model)
-        (model.copy(page = Page.PokemonSearch (form.copy (name = name, suggestions = List ()))), Cmd.None)
+        (model.copy(page = Page.PokemonSearch (form.copy (name = name, suggestions = List ()))), cmd)
 
       case PokemonMessage.SuggestionSelected(name) =>
         val form = extractPokForm (model)
@@ -254,14 +260,14 @@ object Main extends TyrianIOApp[Msg, Model] {
         input (
           placeholder := "Pokemon Name",
           value := pform.name,
+          list := "suggestions",
           onInput (s => Msg.PMsg (PokemonMessage.NameChanged (s)))
         ),
         pokemonSuggestionView (pform.suggestions),
         button (`type` := "submit",
           onClick (Msg.PMsg (PokemonMessage.SubmitForm))
         )("Search")
-      ),
-      ul( pform.suggestions.map { name => li(name) } ),
+      ),      
       // display the pokemon
       pokemonInfoView (pform.pokemon, pform.failed)      
     )    
@@ -296,13 +302,15 @@ object Main extends TyrianIOApp[Msg, Model] {
     }
 
   def pokemonSuggestionView(lst: List[String]): Html[Msg] =
-    if lst.nonEmpty then {
-      ul (      
-        lst.map { name => li(onClick( Msg.PMsg(PokemonMessage.SuggestionSelected(name))))(name) }
-      )
-    } else {
-      div ()
-    }
+    datalist (
+      id := "suggestions"
+    )(
+      lst.map { name =>
+        option(
+          onClick( Msg.PMsg(PokemonMessage.SuggestionSelected(name)))
+        )(name)
+      }
+    )
 
   /**
     * error page (should not happen)

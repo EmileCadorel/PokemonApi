@@ -8,6 +8,14 @@ import cats.syntax.all.*
 
 import io.circe.*
 
+/*!
+* ====================================================================================================
+ * ====================================================================================================
+ * =================================          SINGLE POKEMON          =================================
+ * ====================================================================================================
+ * ====================================================================================================
+ */
+
 final case class Pokemon(id : Int, name: String, weight: Int, sprites: PokemonSprite, types: List[PokemonType])
 final case class PokemonSprite(front_default: String)
 final case class PokemonType(value: String)
@@ -58,4 +66,37 @@ object Pokemon {
   given [F[_]: Concurrent]: EntityDecoder[F, Pokemon] = jsonOf
   given [F[_]]: EntityEncoder[F, Pokemon] = jsonEncoderOf
 
+}
+
+/*!
+ * ====================================================================================================
+ * ====================================================================================================
+ * ===============================          POKEMON LIST NAMES          ===============================
+ * ====================================================================================================
+ * ====================================================================================================
+ */
+
+case class PokemonList(names: List[String])
+object PokemonList {
+  import io.circe.{Json, HCursor, DecodingFailure}
+
+  def decodeNames(cursor: HCursor): Either[String, List[String]] = {    
+    cursor.downField("results").as[List[Json]].leftMap (_.message)
+      .flatMap { arr => 
+        arr.traverse { json =>
+          json.hcursor.get[String]("name").leftMap(_.message)
+        }         
+      }
+  }
+
+  given Decoder[PokemonList] = Decoder.instance { cursor =>
+    decodeNames(cursor)
+      .leftMap (msg => DecodingFailure (msg, cursor.history))
+      .map(v => PokemonList (v))
+  }
+
+  given Encoder[PokemonList] = Encoder.AsObject.derived[PokemonList]
+
+  given [F[_]: Concurrent]: EntityDecoder[F, PokemonList] = jsonOf
+  given [F[_]]: EntityEncoder[F, PokemonList] = jsonEncoderOf
 }

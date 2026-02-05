@@ -93,11 +93,29 @@ object PokemonServer {
                                                      PRIMARY KEY (id), FOREIGN KEY (user_id) REFERENCES users(id))
     """.update
 
+    val q3 = sql"DROP TABLE IF EXISTS pokemon_names".update ;                                                             
+    val q4 = sql"""CREATE TABLE if NOT EXISTS pokemon_names (id INT NOT NULL AUTO_INCREMENT,
+                                                             name VARCHAR(30) NOT NULL,
+                                                             PRIMARY KEY (id))                                                     
+    """.update
 
     for {
       _ <- q1.run.transact (adminXa)
       _ <- q2.run.transact (adminXa)
+      _ <- q3.run.transact (adminXa)
+      _ <- q4.run.transact (adminXa)
     } yield ()
+  }
+
+  /**
+    * Insert all pokemon names in the table
+    */
+  def insertAllPokemons[F[_]: Async](names: List[String], xa: Transactor[F]): F[Unit] = {
+    val q = "INSERT INTO pokemon_names (name) VALUES (?) ON DUPLICATE KEY UPDATE name = VALUES(name)"
+    Update[String](q)
+      .updateMany(names)
+      .transact(xa)
+      .void
   }
 
   /*!
@@ -108,12 +126,17 @@ object PokemonServer {
   * ====================================================================================================
   */
 
-  def configure[F[_]: Async](config: AppConfig) = {
+  def configure[F[_]: Async: Network: Console](config: AppConfig) = {
     for {
       adminXa <- Resource.pure(createAdminXA[F](config.db))
       _       <- Resource.eval(ensureDatabase[F](config.db.name, adminXa))
       dbXa    <- Resource.pure(createDBXA[F](config.db))
-      _       <- Resource.eval(ensureTables[F](dbXa))   // ← fixed
+      _       <- Resource.eval(ensureTables[F](dbXa))   
+      cl      <- EmberClientBuilder.default[F].build
+
+      pokemonInfoAlg = PokemonInformation.impl[F](cl, new PokemonRepoDummy ())      
+      lst     <- Resource.eval(pokemonInfoAlg.findPokemonNames)
+      _       <- Resource.eval(insertAllPokemons[F](lst.names, dbXa))
     } yield ()
   }
 
@@ -132,9 +155,10 @@ object PokemonServer {
       
       // DB connection for users
       userRepo = new UserRepoLive[F](mainXa)
+      pokemonRepo = new PokemonRepoLive[F](mainXa)
 
       // Controller for retreiving pokemon information
-      pokemonInfoAlg = PokemonInformation.impl[F](client)
+      pokemonInfoAlg = PokemonInformation.impl[F](client, pokemonRepo)
 
       // Controller to manage user connections and user associated requests
       userAlg = UserManager.impl[F](userRepo)
@@ -142,6 +166,7 @@ object PokemonServer {
       // Define the routes
       httpApp = ( 
         PokemonRoutes.pokemonInformation[F](pokemonInfoAlg) <+>
+          PokemonRoutes.suggestPokemons[F](pokemonInfoAlg) <+>
           PokemonRoutes.loginUser[F](userAlg) <+>
           PokemonRoutes.likePokemon[F](userAlg) <+>
           PokemonRoutes.frontendResources[F] <+>

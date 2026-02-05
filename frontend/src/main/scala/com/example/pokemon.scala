@@ -13,6 +13,14 @@ import io.circe.parser.*
 
 object PokemonApi {
 
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * ==================================          INFORMATION          ===================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
+
   /**
     * Decode a pokemon json
     */
@@ -50,7 +58,7 @@ object PokemonApi {
     * Store a function that transform a server error into a message
     */
   private val onInfoError: HttpError => Msg =
-    e => Msg.LMsg (LoginMessage.Failed (e.toString))
+    e => Msg.PMsg (PokemonMessage.InfoFailed (e.toString))
 
 
   /**
@@ -67,6 +75,51 @@ object PokemonApi {
     Http.send(
       Request.get(s"/api/pokemon-info/${name}"),
       PokemonApi.fromInfoHttpResponse
+    )
+  }
+
+  /*!
+  * ====================================================================================================
+  * ====================================================================================================
+  * ===================================          SUGGESTION          ===================================
+  * ====================================================================================================
+  * ====================================================================================================
+  */
+
+  /**
+    * Store a function that transform a server response into a message
+    */
+  private val onSuggestResponse: Response => Msg = { response =>
+    parse(response.body)
+      .leftMap(_.message)
+      .flatMap(j => j.hcursor.get[List[String]]("names").leftMap(_.message))      
+      .fold(
+        err => Msg.PMsg (PokemonMessage.SuggestionFailed(err)),
+        pok => Msg.PMsg (PokemonMessage.SuggestionSucceeded (pok))
+      )       
+  }
+
+  /**
+    * Store a function that transform a server error into a message
+    */
+  private val onSuggestError: HttpError => Msg =
+    e => Msg.PMsg (PokemonMessage.SuggestionFailed (e.toString))
+
+
+  /**
+    * Decode an information retreive
+    */
+  def fromSuggestHttpResponse: tyrian.http.Decoder[Msg] = {
+    tyrian.http.Decoder[Msg](onSuggestResponse, onSuggestError)
+  }
+
+  /**
+    * Call API to make a name suggestion
+    */
+  def suggest(name: String): Cmd[IO, Msg] = {
+    Http.send(
+      Request.get(s"/api/pokemon-lists/${name}"),
+      PokemonApi.fromSuggestHttpResponse
     )
   }
 
