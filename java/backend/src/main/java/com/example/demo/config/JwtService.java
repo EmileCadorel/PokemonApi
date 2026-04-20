@@ -13,6 +13,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
+import java.util.Optional;
+
 @Service
 public class JwtService {
 
@@ -27,15 +29,15 @@ public class JwtService {
             .compact();
     }
 
-    public String validate (String token) {
+    public Optional<String> validate (String token) {
         try {
-            return Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+            return Optional.of (Jwts.parser()
+                                .setSigningKey(secret)
+                                .parseClaimsJws(token)
+                                .getBody()
+                                .getSubject());
         } catch (JwtException e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
+            return Optional.empty ();
         }
     }
 }

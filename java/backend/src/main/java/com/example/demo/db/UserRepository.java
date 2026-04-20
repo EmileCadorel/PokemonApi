@@ -54,5 +54,40 @@ public class UserRepository {
         
         return results == 1;
     }
-    
+
+    public Boolean isLiked (UserDto.User user, Integer pokemonId) {
+        var results = jdbc.query (
+            "SELECT id FROM likes WHERE user_id=? and pokemon_id=?",
+            (rs, rowNum) -> rs.getInt("id"),            
+            user.id (),
+            pokemonId
+        );
+        
+        return results.stream().findFirst().isPresent ();
+    }
+
+    public Boolean like (UserDto.User user, Integer pokemonId) {
+        if (!this.isLiked (user, pokemonId)) {
+            var results = jdbc.update("INSERT INTO likes (user_id, pokemon_id) VALUES (?, ?)",
+                                  user.id (),
+                                  pokemonId);
+
+            return results == 1;
+        }
+
+        return false;
+    }
+
+
+    public Boolean unlike (UserDto.User user, Integer pokemonId) {
+        if (this.isLiked (user, pokemonId)) {
+            var results = jdbc.update("DELETE from likes where user_id = ? and pokemon_id = ?",
+                                  user.id (),
+                                  pokemonId);
+
+            return results == 1;
+        }
+
+        return false;
+    }
 }

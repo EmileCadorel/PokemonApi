@@ -8,8 +8,8 @@ npm run build
 
 # Copy to back
 cd ${base}
-rm ${base}/backend/src/main/resources/static/assets/*
-rm ${base}/backend/src/main/resources/static/*
+rm ${base}/backend/src/main/resources/static/assets/*.*
+rm ${base}/backend/src/main/resources/static/*.*
 
 cp -r ${base}/frontend/dist/* ${base}/backend/src/main/resources/static
 

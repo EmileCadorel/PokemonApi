@@ -2,7 +2,7 @@ package com.example.demo.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 
@@ -41,8 +41,8 @@ public class PokemonController {
      * ====================================================================================================
      */
     
-    @GetMapping("/api/pokemon-info")
-    public PokemonDto.Pokemon pokemonInfo (@RequestParam String name) {
+    @GetMapping("/api/pokemon-info/{name}")
+    public PokemonDto.Pokemon pokemonInfo (@PathVariable String name) {
         // It's faster to lookup the pokemon in the DB first
         if (!this.dbService.exists (name)) {            
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pokemon not found");
@@ -64,8 +64,8 @@ public class PokemonController {
         }
     }
 
-    @GetMapping("/api/pokemon-suggest")
-    public PokemonDto.SuggestList suggestList (@RequestParam String start) {
+    @GetMapping("/api/pokemon-suggest/{start}")
+    public PokemonDto.SuggestList suggestList (@PathVariable String start) {        
         var lst = this.dbService.suggest (start);
 
         return new PokemonDto.SuggestList (lst);

@@ -30,5 +30,17 @@ public class UserService {
     public Boolean insert (UserDto.User user) {
         return repo.insert (user);        
     }
+
+    public Boolean like (UserDto.User user, Integer id) {
+        return repo.like (user, id);
+    }
+
+    public Boolean unlike (UserDto.User user, Integer id) {
+        return repo.unlike (user, id);
+    }
+
+    public Boolean isLiked (UserDto.User user, Integer id) {
+        return repo.isLiked (user, id);
+    }
     
 }

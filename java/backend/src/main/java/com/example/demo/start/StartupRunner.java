@@ -5,10 +5,18 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import java.util.ArrayList;
+import java.io.InputStream;
+import java.io.*;
+
+import java.nio.charset.StandardCharsets; 
+import org.yaml.snakeyaml.Yaml;
 
 import com.example.demo.dto.PokemonDto;
 
@@ -19,10 +27,12 @@ public class StartupRunner implements CommandLineRunner {
 
     private final JdbcTemplate jdbc;
     private final RestClient rest;
+    private final PasswordEncoder encoder;
 
-    public StartupRunner (RestClient rest, JdbcTemplate jdbc) {
+    public StartupRunner (RestClient rest, JdbcTemplate jdbc, PasswordEncoder encoder) {
         this.rest = rest;
         this.jdbc = jdbc;
+        this.encoder = encoder;
     }
 
     @Override
@@ -34,16 +44,45 @@ public class StartupRunner implements CommandLineRunner {
     }
 
     private void createUserTable () {
+        try {
+            var drop1 = "DROP TABLE likes";
+            jdbc.execute (drop1);
+            
+            var drop = "DROP TABLE users";
+            jdbc.execute (drop);
+        } catch (Exception e) {
+            System.out.println (e);
+        }
+        
         var rq = "CREATE TABLE IF NOT EXISTS users (id INT NOT NULL AUTO_INCREMENT, login VARCHAR (255) NOT NULL, password VARCHAR (255) NOT NULL, PRIMARY KEY (id))";
         jdbc.execute (rq);
+
+
+        var inputStream = getClass ().getClassLoader ().getResourceAsStream ("/users.yml");
+        if (inputStream != null) {
+            var yaml = new Yaml();
+            Map<String, String> data = yaml.load(inputStream);
+            List<Map.Entry<String, String>> list = data.entrySet()
+                .stream()
+                .collect(Collectors.toList());
+            
+            String sql = "INSERT INTO users (login, password) VALUES (?, ?)";
+            jdbc.batchUpdate(sql, list, list.size(), (ps, user) -> {
+                    ps.setString(1, user.getKey ());
+                    ps.setString(2, this.encoder.encode (user.getValue ()));
+                });
+        }
     }
 
     private void createPokemonTable () {
-        var drop = "DROP TABLE pokemon_names";
-        jdbc.execute (drop);
+        try {        
+            var drop = "DROP TABLE pokemon_names";
+            jdbc.execute (drop);
+        } catch (Exception e) {            
+        }
         
         var rq = "CREATE TABLE IF NOT EXISTS pokemon_names (name VARCHAR (255) NOT NULL, PRIMARY KEY (name))";
-        jdbc.execute (rq);        
+        jdbc.execute (rq);         
     }
 
     private void createLikesTable () {
